@@ -7,6 +7,7 @@ public class NaverSymbolConstants {
         public static final String DAY = "day";
         public static final String WEEK = "week";
         public static final String MONTH = "month";
+        public static final String MINUTE = "minute";
     }
 
     public static class KOSPI {

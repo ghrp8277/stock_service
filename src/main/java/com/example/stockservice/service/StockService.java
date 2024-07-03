@@ -2,7 +2,12 @@ package com.example.stockservice.service;
 
 import com.example.stockservice.constants.NaverSymbolConstants;
 import com.example.stockservice.dto.StockDto;
+import com.example.stockservice.entity.Stock;
+import com.example.stockservice.entity.StockData;
+import com.example.stockservice.repository.StockDataRepository;
+import com.example.stockservice.repository.StockRepository;
 import com.example.stockservice.util.HttpUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -16,6 +21,89 @@ import java.util.ArrayList;
 
 @Service
 public class StockService {
+    @Autowired
+    private StockRepository stockRepository;
+
+    @Autowired
+    private StockDataRepository stockDataRepository;
+
+    public void collectAndSaveInitialData() {
+        List<String> symbols = List.of(
+                NaverSymbolConstants.KOSPI.SAMSUNG_ELECTRONIC,
+                NaverSymbolConstants.KOSPI.LG_ENERGY_SOLUTION,
+                NaverSymbolConstants.KOSPI.ECOPRO_MATERIALS,
+                NaverSymbolConstants.KOSPI.SK_HYNIX,
+                NaverSymbolConstants.KOSPI.LNF,
+                NaverSymbolConstants.KOSDAQ.HLB,
+                NaverSymbolConstants.KOSDAQ.HASS,
+                NaverSymbolConstants.KOSDAQ.ECOPRO_BM,
+                NaverSymbolConstants.KOSDAQ.ECOPRO,
+                NaverSymbolConstants.KOSDAQ.INNOSPACE
+        );
+
+        for (String symbol : symbols) {
+            try {
+                List<StockDto> stockDataList = getStockData(symbol, NaverSymbolConstants.TimeFrame.DAY, 1250);
+                saveStockData(stockDataList, symbol);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // 일간 데이터 수집 메서드
+    public void collectAndSaveDailyData() {
+        List<String> symbols = List.of(
+                NaverSymbolConstants.KOSPI.SAMSUNG_ELECTRONIC,
+                NaverSymbolConstants.KOSPI.LG_ENERGY_SOLUTION,
+                NaverSymbolConstants.KOSPI.ECOPRO_MATERIALS,
+                NaverSymbolConstants.KOSPI.SK_HYNIX,
+                NaverSymbolConstants.KOSPI.LNF,
+                NaverSymbolConstants.KOSDAQ.HLB,
+                NaverSymbolConstants.KOSDAQ.HASS,
+                NaverSymbolConstants.KOSDAQ.ECOPRO_BM,
+                NaverSymbolConstants.KOSDAQ.ECOPRO,
+                NaverSymbolConstants.KOSDAQ.INNOSPACE
+        );
+
+        for (String symbol : symbols) {
+            try {
+                List<StockDto> stockDataList = getStockData(symbol, NaverSymbolConstants.TimeFrame.DAY, 1); // 지난 하루 데이터 수집
+                saveStockData(stockDataList, symbol);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        // 네이버 주가 API를 호출하여 일간 데이터를 수집하고 DB에 저장하는 로직
+        System.out.println("일간 주가 데이터를 수집하고 저장합니다.");
+    }
+
+    // 실시간 데이터 수집 메서드
+    public void collectAndSaveRealTimeData() {
+        List<String> symbols = List.of(
+                NaverSymbolConstants.KOSPI.SAMSUNG_ELECTRONIC,
+                NaverSymbolConstants.KOSPI.LG_ENERGY_SOLUTION,
+                NaverSymbolConstants.KOSPI.ECOPRO_MATERIALS,
+                NaverSymbolConstants.KOSPI.SK_HYNIX,
+                NaverSymbolConstants.KOSPI.LNF,
+                NaverSymbolConstants.KOSDAQ.HLB,
+                NaverSymbolConstants.KOSDAQ.HASS,
+                NaverSymbolConstants.KOSDAQ.ECOPRO_BM,
+                NaverSymbolConstants.KOSDAQ.ECOPRO,
+                NaverSymbolConstants.KOSDAQ.INNOSPACE
+        );
+
+        for (String symbol : symbols) {
+            try {
+                List<StockDto> stockDataList = getStockData(symbol, NaverSymbolConstants.TimeFrame.MINUTE, 1); // 실시간 데이터 수집
+                saveStockData(stockDataList, symbol);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("실시간 주가 데이터를 수집하고 저장합니다.");
+    }
+
     public List<StockDto> getStockData(String symbol, String timeframe, int count) throws Exception {
         String url = String.format("%s?symbol=%s&timeframe=%s&count=%d&requestType=0",
                 NaverSymbolConstants.BASE_URL, symbol, timeframe, count);
@@ -50,5 +138,22 @@ public class StockService {
         }
 
         return stockDataList;
+    }
+
+    private void saveStockData(List<StockDto> stockDataList, String symbol) {
+        Stock stock = stockRepository.findByCode(symbol);
+
+        for (StockDto stockDto : stockDataList) {
+            StockData stockData = new StockData();
+            stockData.setDate(stockDto.getDate());
+            stockData.setOpenPrice(stockDto.getOpenPrice());
+            stockData.setHighPrice(stockDto.getHighPrice());
+            stockData.setLowPrice(stockDto.getLowPrice());
+            stockData.setClosePrice(stockDto.getClosePrice());
+            stockData.setVolume(stockDto.getVolume());
+            stockData.setStock(stock);
+
+            stockDataRepository.save(stockData);
+        }
     }
 }

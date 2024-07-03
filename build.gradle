@@ -25,6 +25,8 @@ repositories {
 }
 
 dependencies {
+    //batch
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
     // MySQL
     implementation 'mysql:mysql-connector-java:8.0.28'
     implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
