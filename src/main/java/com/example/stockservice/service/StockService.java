@@ -18,6 +18,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Optional;
 
 @Service
 public class StockService {
@@ -28,18 +29,7 @@ public class StockService {
     private StockDataRepository stockDataRepository;
 
     public void collectAndSaveInitialData() {
-        List<String> symbols = List.of(
-                NaverSymbolConstants.KOSPI.SAMSUNG_ELECTRONIC,
-                NaverSymbolConstants.KOSPI.LG_ENERGY_SOLUTION,
-                NaverSymbolConstants.KOSPI.ECOPRO_MATERIALS,
-                NaverSymbolConstants.KOSPI.SK_HYNIX,
-                NaverSymbolConstants.KOSPI.LNF,
-                NaverSymbolConstants.KOSDAQ.HLB,
-                NaverSymbolConstants.KOSDAQ.HASS,
-                NaverSymbolConstants.KOSDAQ.ECOPRO_BM,
-                NaverSymbolConstants.KOSDAQ.ECOPRO,
-                NaverSymbolConstants.KOSDAQ.INNOSPACE
-        );
+        List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
 
         for (String symbol : symbols) {
             try {
@@ -53,18 +43,7 @@ public class StockService {
 
     // 일간 데이터 수집 메서드
     public void collectAndSaveDailyData() {
-        List<String> symbols = List.of(
-                NaverSymbolConstants.KOSPI.SAMSUNG_ELECTRONIC,
-                NaverSymbolConstants.KOSPI.LG_ENERGY_SOLUTION,
-                NaverSymbolConstants.KOSPI.ECOPRO_MATERIALS,
-                NaverSymbolConstants.KOSPI.SK_HYNIX,
-                NaverSymbolConstants.KOSPI.LNF,
-                NaverSymbolConstants.KOSDAQ.HLB,
-                NaverSymbolConstants.KOSDAQ.HASS,
-                NaverSymbolConstants.KOSDAQ.ECOPRO_BM,
-                NaverSymbolConstants.KOSDAQ.ECOPRO,
-                NaverSymbolConstants.KOSDAQ.INNOSPACE
-        );
+        List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
 
         for (String symbol : symbols) {
             try {
@@ -80,18 +59,7 @@ public class StockService {
 
     // 실시간 데이터 수집 메서드
     public void collectAndSaveRealTimeData() {
-        List<String> symbols = List.of(
-                NaverSymbolConstants.KOSPI.SAMSUNG_ELECTRONIC,
-                NaverSymbolConstants.KOSPI.LG_ENERGY_SOLUTION,
-                NaverSymbolConstants.KOSPI.ECOPRO_MATERIALS,
-                NaverSymbolConstants.KOSPI.SK_HYNIX,
-                NaverSymbolConstants.KOSPI.LNF,
-                NaverSymbolConstants.KOSDAQ.HLB,
-                NaverSymbolConstants.KOSDAQ.HASS,
-                NaverSymbolConstants.KOSDAQ.ECOPRO_BM,
-                NaverSymbolConstants.KOSDAQ.ECOPRO,
-                NaverSymbolConstants.KOSDAQ.INNOSPACE
-        );
+        List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
 
         for (String symbol : symbols) {
             try {
@@ -141,19 +109,29 @@ public class StockService {
     }
 
     private void saveStockData(List<StockDto> stockDataList, String symbol) {
-        Stock stock = stockRepository.findByCode(symbol);
+        Optional<Stock> optionalStock = stockRepository.findByCode(symbol);
+
+        if (optionalStock.isEmpty()) {
+            System.err.println("Stock with code " + symbol + " not found in the database.");
+            return;
+        }
+
+        Stock stock = optionalStock.get();
 
         for (StockDto stockDto : stockDataList) {
-            StockData stockData = new StockData();
-            stockData.setDate(stockDto.getDate());
-            stockData.setOpenPrice(stockDto.getOpenPrice());
-            stockData.setHighPrice(stockDto.getHighPrice());
-            stockData.setLowPrice(stockDto.getLowPrice());
-            stockData.setClosePrice(stockDto.getClosePrice());
-            stockData.setVolume(stockDto.getVolume());
-            stockData.setStock(stock);
+            Optional<StockData> existingStockData = stockDataRepository.findByDateAndStock(stockDto.getDate(), stock);
+            if (existingStockData.isEmpty()) {
+                StockData stockData = new StockData();
+                stockData.setDate(stockDto.getDate());
+                stockData.setOpenPrice(stockDto.getOpenPrice());
+                stockData.setHighPrice(stockDto.getHighPrice());
+                stockData.setLowPrice(stockDto.getLowPrice());
+                stockData.setClosePrice(stockDto.getClosePrice());
+                stockData.setVolume(stockDto.getVolume());
+                stockData.setStock(stock);
 
-            stockDataRepository.save(stockData);
+                stockDataRepository.save(stockData);
+            }
         }
     }
 }

@@ -14,6 +14,11 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import javax.sql.DataSource;
+import org.springframework.core.io.Resource;
+import org.springframework.jdbc.datasource.init.DataSourceInitializer;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableBatchProcessing
@@ -22,10 +27,23 @@ public class BatchConfig {
     private final PlatformTransactionManager transactionManager;
     private final StockService stockService;
 
+    @Value("file:./schema-mysql.sql")
+    private Resource batchSchema;
+
     public BatchConfig(JobRepository jobRepository, PlatformTransactionManager transactionManager, StockService stockService) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
         this.stockService = stockService;
+    }
+
+    @Bean
+    public DataSourceInitializer batchDataSourceInitializer(DataSource dataSource) {
+        ResourceDatabasePopulator databasePopulator = new ResourceDatabasePopulator();
+        databasePopulator.addScript(batchSchema);
+        DataSourceInitializer initializer = new DataSourceInitializer();
+        initializer.setDataSource(dataSource);
+        initializer.setDatabasePopulator(databasePopulator);
+        return initializer;
     }
 
     @Bean
