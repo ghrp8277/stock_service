@@ -2,6 +2,9 @@ package com.example.stockservice.grpc;
 
 import com.example.grpc.*;
 import com.example.stockservice.dto.StockDto;
+import com.example.stockservice.entity.Market;
+import com.example.stockservice.entity.Stock;
+import com.example.stockservice.entity.StockData;
 import com.example.stockservice.service.StockService;
 import com.example.stockservice.util.GrpcResponseHelper;
 import io.grpc.stub.StreamObserver;
@@ -11,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @GrpcService
@@ -22,26 +26,151 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
     private GrpcResponseHelper grpcResponseHelper;
 
     @Override
-    public void getStockData(GetStockDataRequest request, StreamObserver<Response> responseObserver) {
+    public void getMarkets(Empty request, StreamObserver<Response> responseObserver) {
         try {
-            List<StockDto> stockData = stockService.getStockData(
-                    request.getSymbol(),
-                    request.getTimeframe(),
-                    request.getCount()
+            List<Market> markets = stockService.getMarkets();
+
+            List<Map<String, String>> responseData = markets.stream()
+                    .map(market -> {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("name", market.getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("markets", responseData);
+
+            grpcResponseHelper.sendJsonResponse("markets", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void getStocksByMarket(GetStocksByMarketRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            List<Stock> stocks = stockService.getStocksByMarket(request.getMarketName());
+
+            List<Map<String, Object>> responseData = stocks.stream()
+                    .map(stock -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("code", stock.getCode());
+                        map.put("name", stock.getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("market_name", request.getMarketName());
+            response.put("stocks", responseData);
+
+            grpcResponseHelper.sendJsonResponse("stocks", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void getStockDataByMarketAndCode(GetStockDataByMarketAndCodeRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            List<StockDto> stockDataList = stockService.getStockDataByMarketAndCode(
+                    request.getMarketName(),
+                    request.getCode(),
+                    request.getTimeframe()
             );
 
-            List<Map<String, Object>> responseData = stockData.stream().map(stock -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("date", stock.getDate());
-                map.put("open_price", stock.getOpenPrice());
-                map.put("high_price", stock.getHighPrice());
-                map.put("low_price", stock.getLowPrice());
-                map.put("close_price", stock.getClosePrice());
-                map.put("volume", stock.getVolume());
-                return map;
-            }).collect(Collectors.toList());
+            List<Map<String, Object>> responseData = stockDataList.stream()
+                    .map(stockData -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("date", stockData.getDate());
+                        map.put("open_price", stockData.getOpenPrice());
+                        map.put("high_price", stockData.getHighPrice());
+                        map.put("low_price", stockData.getLowPrice());
+                        map.put("close_price", stockData.getClosePrice());
+                        map.put("volume", stockData.getVolume());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
 
-            grpcResponseHelper.sendJsonResponse("stock_data", responseData, responseObserver);
+            Map<String, Object> response = new HashMap<>();
+            response.put("market_name", request.getMarketName());
+            response.put("stock_code", request.getCode());
+            response.put("stocks", responseData);
+
+            grpcResponseHelper.sendJsonResponse("stocks", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void searchStocksByName(SearchStocksByNameRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            List<Stock> stocks = stockService.searchStocksByName(request.getName());
+
+            List<Map<String, String>> responseData = stocks.stream()
+                    .map(stock -> {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("code", stock.getCode());
+                        map.put("name", stock.getName());
+                        map.put("market_name", stock.getMarket().getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("stocks", responseData.toString());
+
+            grpcResponseHelper.sendJsonResponse("stocks_by_name", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void searchStocksByCode(SearchStocksByCodeRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            List<Stock> stocks = stockService.searchStocksByCode(request.getCode());
+
+            List<Map<String, String>> responseData = stocks.stream()
+                    .map(stock -> {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("code", stock.getCode());
+                        map.put("name", stock.getName());
+                        map.put("market_name", stock.getMarket().getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("stocks", responseData.toString());
+
+            grpcResponseHelper.sendJsonResponse("stocks_by_code", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void searchStocksByMarket(SearchStocksByMarketRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            List<Stock> stocks = stockService.searchStocksByMarket(request.getMarket());
+
+            List<Map<String, String>> responseData = stocks.stream()
+                    .map(stock -> {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("code", stock.getCode());
+                        map.put("name", stock.getName());
+                        map.put("market_name", stock.getMarket().getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("stocks", responseData.toString());
+
+            grpcResponseHelper.sendJsonResponse("stocks_by_market", response, responseObserver);
         } catch (Exception e) {
             grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
         }

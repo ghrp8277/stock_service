@@ -2,10 +2,13 @@ package com.example.stockservice.service;
 
 import com.example.stockservice.constants.NaverSymbolConstants;
 import com.example.stockservice.dto.StockDto;
+import com.example.stockservice.entity.Market;
 import com.example.stockservice.entity.Stock;
 import com.example.stockservice.entity.StockData;
+import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;
 import com.example.stockservice.repository.StockRepository;
+import com.example.stockservice.util.DateUtil;
 import com.example.stockservice.util.HttpUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,9 +22,13 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class StockService {
+    @Autowired
+    private MarketRepository marketRepository;
+
     @Autowired
     private StockRepository stockRepository;
 
@@ -133,5 +140,50 @@ public class StockService {
                 stockDataRepository.save(stockData);
             }
         }
+    }
+
+    public List<Market> getMarkets() {
+        return marketRepository.findAll();
+    }
+
+    public List<Stock> getStocksByMarket(String marketName) {
+        Optional<Market> optionalMarket = marketRepository.findByName(marketName);
+        if (optionalMarket.isPresent()) {
+            Market market = optionalMarket.get();
+            return stockRepository.findByMarket(market);
+        } else {
+            return new ArrayList<>();
+        }
+    }
+
+    public List<StockDto> getStockDataByMarketAndCode(String marketName, String code, String timeframe) {
+        Optional<Stock> optionalStock = stockRepository.findByCodeAndMarketName(code, marketName);
+
+        if (optionalStock.isPresent()) {
+            Stock stock = optionalStock.get();
+            String startDate = DateUtil.calculateStartDate(timeframe);
+            List<StockData> stockDataList = stockDataRepository.findByStockAndStock_MarketNameAndDateAfter(stock, marketName, startDate);
+            return stockDataList.stream().map(stockData -> new StockDto(
+                    stockData.getDate(),
+                    stockData.getOpenPrice(),
+                    stockData.getHighPrice(),
+                    stockData.getLowPrice(),
+                    stockData.getClosePrice(),
+                    stockData.getVolume()
+            )).collect(Collectors.toList());
+        }
+        return List.of();
+    }
+
+    public List<Stock> searchStocksByName(String name) {
+        return stockRepository.findByNameContaining(name);
+    }
+
+    public List<Stock> searchStocksByCode(String code) {
+        return stockRepository.findAllByCode(code);
+    }
+
+    public List<Stock> searchStocksByMarket(String market) {
+        return stockRepository.findByMarketName(market);
     }
 }

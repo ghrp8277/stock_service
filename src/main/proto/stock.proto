@@ -7,13 +7,36 @@ option java_outer_classname = "StockProto";
 package stock;
 
 service StockService {
-    rpc GetStockData (GetStockDataRequest) returns (Response);
+    rpc GetMarkets (Empty) returns (Response);
+    rpc GetStocksByMarket (GetStocksByMarketRequest) returns (Response);
+    rpc GetStockDataByMarketAndCode (GetStockDataByMarketAndCodeRequest) returns (Response);
+    rpc SearchStocksByName (SearchStocksByNameRequest) returns (Response);
+    rpc SearchStocksByCode (SearchStocksByCodeRequest) returns (Response);
+    rpc SearchStocksByMarket (SearchStocksByMarketRequest) returns (Response);
 }
 
-message GetStockDataRequest {
-    string symbol = 1;
-    string timeframe = 2;
-    int32 count = 3;
+message Empty {}
+
+message GetStocksByMarketRequest {
+    string marketName = 1;
+}
+
+message GetStockDataByMarketAndCodeRequest {
+    string marketName = 1;
+    string code = 2;
+    string timeframe = 3;
+}
+
+message SearchStocksByNameRequest {
+    string name = 1;
+}
+
+message SearchStocksByCodeRequest {
+    string code = 1;
+}
+
+message SearchStocksByMarketRequest {
+    string market = 1;
 }
 
 message Response {
