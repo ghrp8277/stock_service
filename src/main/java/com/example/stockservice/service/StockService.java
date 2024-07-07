@@ -16,16 +16,23 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
-import java.util.List;
+
+import java.util.*;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class StockService {
+    private static final Logger logger = LoggerFactory.getLogger(StockService.class);
+
     @Autowired
     private MarketRepository marketRepository;
 
@@ -37,46 +44,79 @@ public class StockService {
 
     public void collectAndSaveInitialData() {
         List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
+        ExecutorService executorService = Executors.newFixedThreadPool(10); // 10개의 쓰레드 사용
 
         for (String symbol : symbols) {
-            try {
-                List<StockDto> stockDataList = getStockData(symbol, NaverSymbolConstants.TimeFrame.DAY, 1250);
-                saveStockData(stockDataList, symbol);
-            } catch (Exception e) {
-                e.printStackTrace();
+            executorService.submit(() -> {
+                try {
+                    List<StockDto> stockDataList = getStockDataWithRetry(symbol, NaverSymbolConstants.TimeFrame.DAY, 1250, 3);
+                    saveStockData(stockDataList, symbol);
+                } catch (Exception e) {
+                    logger.error("Error processing symbol: " + symbol, e);
+                }
+            });
+        }
+
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(1, TimeUnit.HOURS)) {
+                executorService.shutdownNow();
+                if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
+                    logger.error("ExecutorService did not terminate");
+                }
             }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 
-    // 일간 데이터 수집 메서드
     public void collectAndSaveDailyData() {
         List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
+        ExecutorService executorService = Executors.newFixedThreadPool(10); // 10개의 쓰레드 사용
 
         for (String symbol : symbols) {
-            try {
-                List<StockDto> stockDataList = getStockData(symbol, NaverSymbolConstants.TimeFrame.DAY, 1); // 지난 하루 데이터 수집
-                saveStockData(stockDataList, symbol);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            executorService.submit(() -> {
+                try {
+                    List<StockDto> stockDataList = getStockDataWithRetry(symbol, NaverSymbolConstants.TimeFrame.DAY, 1, 3); // 지난 하루 데이터 수집
+                    saveStockData(stockDataList, symbol);
+                } catch (Exception e) {
+                    logger.error("Error processing symbol: " + symbol, e);
+                }
+            });
         }
-        // 네이버 주가 API를 호출하여 일간 데이터를 수집하고 DB에 저장하는 로직
-        System.out.println("일간 주가 데이터를 수집하고 저장합니다.");
+
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(1, TimeUnit.HOURS)) {
+                executorService.shutdownNow();
+                if (!executorService.awaitTermination(1, TimeUnit.MINUTES)) {
+                    logger.error("ExecutorService did not terminate");
+                }
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        logger.info("일간 주가 데이터를 수집하고 저장합니다.");
     }
 
-    // 실시간 데이터 수집 메서드
-    public void collectAndSaveRealTimeData() {
-        List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
-
-        for (String symbol : symbols) {
+    public List<StockDto> getStockDataWithRetry(String symbol, String timeframe, int count, int maxRetries) throws Exception {
+        int attempt = 0;
+        while (attempt < maxRetries) {
             try {
-                List<StockDto> stockDataList = getStockData(symbol, NaverSymbolConstants.TimeFrame.MINUTE, 1); // 실시간 데이터 수집
-                saveStockData(stockDataList, symbol);
+                return getStockData(symbol, timeframe, count);
             } catch (Exception e) {
-                e.printStackTrace();
+                attempt++;
+                if (attempt >= maxRetries) {
+                    throw e;
+                }
+                logger.warn("Retrying getStockData for symbol: " + symbol + ", attempt: " + attempt);
+                Thread.sleep(1000); // 재시도 전 대기 시간
             }
         }
-        System.out.println("실시간 주가 데이터를 수집하고 저장합니다.");
+        return Collections.emptyList(); // 여기에 도달하지 않아야 함
     }
 
     public List<StockDto> getStockData(String symbol, String timeframe, int count) throws Exception {
@@ -125,9 +165,15 @@ public class StockService {
 
         Stock stock = optionalStock.get();
 
+        List<StockData> existingStockDataList = stockDataRepository.findByStock(stock);
+        Map<String, StockData> existingStockDataMap = new HashMap<>();
+        for (StockData existingStockData : existingStockDataList) {
+            existingStockDataMap.put(existingStockData.getDate(), existingStockData);
+        }
+
+        List<StockData> stockDataEntities = new ArrayList<>();
         for (StockDto stockDto : stockDataList) {
-            Optional<StockData> existingStockData = stockDataRepository.findByDateAndStock(stockDto.getDate(), stock);
-            if (existingStockData.isEmpty()) {
+            if (!existingStockDataMap.containsKey(stockDto.getDate())) {
                 StockData stockData = new StockData();
                 stockData.setDate(stockDto.getDate());
                 stockData.setOpenPrice(stockDto.getOpenPrice());
@@ -137,8 +183,12 @@ public class StockService {
                 stockData.setVolume(stockDto.getVolume());
                 stockData.setStock(stock);
 
-                stockDataRepository.save(stockData);
+                stockDataEntities.add(stockData);
             }
+        }
+
+        if (!stockDataEntities.isEmpty()) {
+            stockDataRepository.saveAll(stockDataEntities);
         }
     }
 

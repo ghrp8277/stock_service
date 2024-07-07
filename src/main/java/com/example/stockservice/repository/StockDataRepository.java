@@ -10,5 +10,6 @@ import java.util.Optional;
 public interface StockDataRepository extends JpaRepository<StockData, Long> {
     boolean existsByDateAndStock(String date, Stock stock);
     Optional<StockData> findByDateAndStock(String date, Stock stock);
+    List<StockData> findByStock(Stock stock);
     List<StockData> findByStockAndStock_MarketNameAndDateAfter(Stock stock, String marketName, String date);
 }
