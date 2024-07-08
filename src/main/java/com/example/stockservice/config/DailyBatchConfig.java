@@ -1,6 +1,7 @@
 package com.example.stockservice.config;
 
 import com.example.stockservice.listener.JobCompletionNotificationListener;
+import com.example.stockservice.service.BatchService;
 import com.example.stockservice.service.StockService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -20,12 +21,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class DailyBatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final StockService stockService;
+    private final BatchService batchService;
 
-    public DailyBatchConfig(JobRepository jobRepository, PlatformTransactionManager transactionManager, StockService stockService) {
+    public DailyBatchConfig(JobRepository jobRepository, PlatformTransactionManager transactionManager, BatchService batchService) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
-        this.stockService = stockService;
+        this.batchService = batchService;
     }
 
     @Bean
@@ -47,7 +48,7 @@ public class DailyBatchConfig {
     @Bean
     public Tasklet dailyTasklet() {
         return (contribution, chunkContext) -> {
-            stockService.collectAndSaveDailyData();
+            batchService.collectAndSaveDailyData();
             return RepeatStatus.FINISHED;
         };
     }

@@ -9,16 +9,23 @@ package stock;
 service StockService {
     rpc GetMarkets (Empty) returns (Response);
     rpc GetStocksByMarket (GetStocksByMarketRequest) returns (Response);
+    rpc GetAllStocksByMarket (GetAllStocksByMarketRequest) returns (Response);
     rpc GetStockDataByMarketAndCode (GetStockDataByMarketAndCodeRequest) returns (Response);
     rpc SearchStocksByName (SearchStocksByNameRequest) returns (Response);
     rpc SearchStocksByCode (SearchStocksByCodeRequest) returns (Response);
-    rpc SearchStocksByMarket (SearchStocksByMarketRequest) returns (Response);
 }
 
 message Empty {}
 
 message GetStocksByMarketRequest {
     string marketName = 1;
+}
+
+message GetAllStocksByMarketRequest {
+    string marketName = 1;
+    int32 page = 2;
+    int32 size = 3;
+    repeated string sort = 4;
 }
 
 message GetStockDataByMarketAndCodeRequest {
@@ -29,14 +36,16 @@ message GetStockDataByMarketAndCodeRequest {
 
 message SearchStocksByNameRequest {
     string name = 1;
+    int32 page = 2;
+    int32 size = 3;
+    repeated string sort = 4;
 }
 
 message SearchStocksByCodeRequest {
     string code = 1;
-}
-
-message SearchStocksByMarketRequest {
-    string market = 1;
+    int32 page = 2;
+    int32 size = 3;
+    repeated string sort = 4;
 }
 
 message Response {

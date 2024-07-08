@@ -4,17 +4,16 @@ import com.example.grpc.*;
 import com.example.stockservice.dto.StockDto;
 import com.example.stockservice.entity.Market;
 import com.example.stockservice.entity.Stock;
-import com.example.stockservice.entity.StockData;
 import com.example.stockservice.service.StockService;
 import com.example.stockservice.util.GrpcResponseHelper;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @GrpcService
@@ -105,13 +104,21 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
     }
 
     @Override
-    public void searchStocksByName(SearchStocksByNameRequest request, StreamObserver<Response> responseObserver) {
+    public void getAllStocksByMarket(GetAllStocksByMarketRequest request, StreamObserver<Response> responseObserver) {
         try {
-            List<Stock> stocks = stockService.searchStocksByName(request.getName());
+            List<String> sortParams = request.getSortList();
+            String[] sortArray = sortParams.toArray(new String[0]);
 
-            List<Map<String, String>> responseData = stocks.stream()
+            Page<Stock> stocksPage = stockService.getAllStocksByMarket(
+                    request.getMarketName(),
+                    request.getPage(),
+                    request.getSize(),
+                    sortArray
+            );
+
+            List<Map<String, Object>> responseData = stocksPage.getContent().stream()
                     .map(stock -> {
-                        Map<String, String> map = new HashMap<>();
+                        Map<String, Object> map = new HashMap<>();
                         map.put("code", stock.getCode());
                         map.put("name", stock.getName());
                         map.put("market_name", stock.getMarket().getName());
@@ -119,8 +126,45 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
                     })
                     .collect(Collectors.toList());
 
-            Map<String, String> response = new HashMap<>();
-            response.put("stocks", responseData.toString());
+            Map<String, Object> response = new HashMap<>();
+            response.put("market_name", request.getMarketName());
+            response.put("stocks", responseData);
+            response.put("total_pages", stocksPage.getTotalPages());
+            response.put("total_elements", stocksPage.getTotalElements());
+
+            grpcResponseHelper.sendJsonResponse("all_stocks_by_market", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void searchStocksByName(SearchStocksByNameRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            List<String> sortParams = request.getSortList();
+            String[] sortArray = sortParams.toArray(new String[0]);
+
+            Page<Stock> stocksPage = stockService.searchStocksByName(
+                    request.getName(),
+                    request.getPage(),
+                    request.getSize(),
+                    sortArray
+            );
+
+            List<Map<String, Object>> responseData = stocksPage.getContent().stream()
+                    .map(stock -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("code", stock.getCode());
+                        map.put("name", stock.getName());
+                        map.put("market_name", stock.getMarket().getName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("stocks", responseData);
+            response.put("total_pages", stocksPage.getTotalPages());
+            response.put("total_elements", stocksPage.getTotalElements());
 
             grpcResponseHelper.sendJsonResponse("stocks_by_name", response, responseObserver);
         } catch (Exception e) {
@@ -131,11 +175,19 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
     @Override
     public void searchStocksByCode(SearchStocksByCodeRequest request, StreamObserver<Response> responseObserver) {
         try {
-            List<Stock> stocks = stockService.searchStocksByCode(request.getCode());
+            List<String> sortParams = request.getSortList();
+            String[] sortArray = sortParams.toArray(new String[0]);
 
-            List<Map<String, String>> responseData = stocks.stream()
+            Page<Stock> stocksPage = stockService.searchStocksByCode(
+                    request.getCode(),
+                    request.getPage(),
+                    request.getSize(),
+                    sortArray
+            );
+
+            List<Map<String, Object>> responseData = stocksPage.getContent().stream()
                     .map(stock -> {
-                        Map<String, String> map = new HashMap<>();
+                        Map<String, Object> map = new HashMap<>();
                         map.put("code", stock.getCode());
                         map.put("name", stock.getName());
                         map.put("market_name", stock.getMarket().getName());
@@ -143,34 +195,13 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
                     })
                     .collect(Collectors.toList());
 
-            Map<String, String> response = new HashMap<>();
-            response.put("stocks", responseData.toString());
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", request.getCode());
+            response.put("stocks", responseData);
+            response.put("total_pages", stocksPage.getTotalPages());
+            response.put("total_elements", stocksPage.getTotalElements());
 
             grpcResponseHelper.sendJsonResponse("stocks_by_code", response, responseObserver);
-        } catch (Exception e) {
-            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
-        }
-    }
-
-    @Override
-    public void searchStocksByMarket(SearchStocksByMarketRequest request, StreamObserver<Response> responseObserver) {
-        try {
-            List<Stock> stocks = stockService.searchStocksByMarket(request.getMarket());
-
-            List<Map<String, String>> responseData = stocks.stream()
-                    .map(stock -> {
-                        Map<String, String> map = new HashMap<>();
-                        map.put("code", stock.getCode());
-                        map.put("name", stock.getName());
-                        map.put("market_name", stock.getMarket().getName());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
-
-            Map<String, String> response = new HashMap<>();
-            response.put("stocks", responseData.toString());
-
-            grpcResponseHelper.sendJsonResponse("stocks_by_market", response, responseObserver);
         } catch (Exception e) {
             grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
         }

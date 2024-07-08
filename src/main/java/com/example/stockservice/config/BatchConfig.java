@@ -1,6 +1,7 @@
 package com.example.stockservice.config;
 
 import com.example.stockservice.listener.JobCompletionNotificationListener;
+import com.example.stockservice.service.BatchService;
 import com.example.stockservice.service.StockService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -25,15 +26,15 @@ import org.springframework.beans.factory.annotation.Value;
 public class BatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final StockService stockService;
+    private final BatchService batchService;
 
     @Value("file:./schema-mysql.sql")
     private Resource batchSchema;
 
-    public BatchConfig(JobRepository jobRepository, PlatformTransactionManager transactionManager, StockService stockService) {
+    public BatchConfig(JobRepository jobRepository, PlatformTransactionManager transactionManager, BatchService batchService) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
-        this.stockService = stockService;
+        this.batchService = batchService;
     }
 
     @Bean
@@ -65,7 +66,7 @@ public class BatchConfig {
     @Bean
     public Tasklet initialTasklet() {
         return (contribution, chunkContext) -> {
-            stockService.collectAndSaveInitialData();
+            batchService.collectAndSaveInitialData();
             return RepeatStatus.FINISHED;
         };
     }
