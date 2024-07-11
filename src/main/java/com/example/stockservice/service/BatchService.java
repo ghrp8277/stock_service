@@ -38,6 +38,9 @@ public class BatchService {
     @Autowired
     private ThreadPoolExecutor executorService;
 
+    @Autowired
+    private TechnicalIndicatorService technicalIndicatorService;
+
     public void collectAndSaveInitialData() {
         List<String> symbols = NaverSymbolConstants.ALL_SYMBOLS;
 
@@ -159,7 +162,11 @@ public class BatchService {
         }
 
         List<StockData> stockDataEntities = new ArrayList<>();
+        List<Double> closePrices = new ArrayList<>();
+
         for (StockDto stockDto : stockDataList) {
+            closePrices.add((double) stockDto.getClosePrice());
+
             if (!existingStockDataMap.containsKey(stockDto.getDate())) {
                 StockData stockData = new StockData();
                 stockData.setDate(stockDto.getDate());
@@ -172,6 +179,10 @@ public class BatchService {
 
                 stockDataEntities.add(stockData);
             }
+        }
+
+        for (StockData stockData : stockDataEntities) {
+            technicalIndicatorService.calculateIndicators(stockData, closePrices);
         }
 
         if (!stockDataEntities.isEmpty()) {

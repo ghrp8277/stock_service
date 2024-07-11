@@ -1,9 +1,13 @@
 package com.example.stockservice.entity;
 
+import com.example.stockservice.entity.TechnicalIndicators.BollingerBands;
+import com.example.stockservice.entity.TechnicalIndicators.MACD;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import jakarta.persistence.*;
+
+import java.util.List;
 
 @Entity
 @Data
@@ -35,4 +39,18 @@ public class StockData {
     @ManyToOne
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
+
+    @ElementCollection
+    @CollectionTable(name = "moving_average", joinColumns = @JoinColumn(name = "stock_data_id"))
+    @Column(name = "value")
+    private List<Double> movingAverage20;
+
+    @Embedded
+    private BollingerBands bollingerBands;
+
+    @Embedded
+    private MACD macd;
+
+    @Column(name = "rsi")
+    private Double rsi;
 }
