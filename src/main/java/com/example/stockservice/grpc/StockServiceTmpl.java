@@ -1,7 +1,7 @@
 package com.example.stockservice.grpc;
 
 import com.example.grpc.*;
-import com.example.stockservice.dto.StockDto;
+import com.example.stockservice.dto.*;
 import com.example.stockservice.entity.Market;
 import com.example.stockservice.entity.Stock;
 import com.example.stockservice.service.StockService;
@@ -202,6 +202,68 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
             response.put("total_elements", stocksPage.getTotalElements());
 
             grpcResponseHelper.sendJsonResponse("stocks_by_code", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void getMovingAverages(GetMovingAveragesRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            MovingAverageDto movingAverageDto = stockService.getMovingAverages(request.getStockCode(), request.getTimeframe());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("sma12", movingAverageDto.getSma12());
+            response.put("sma20", movingAverageDto.getSma20());
+            response.put("sma26", movingAverageDto.getSma26());
+
+            grpcResponseHelper.sendJsonResponse("moving_averages", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void getBollingerBands(GetBollingerBandsRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            BollingerBandsDto bollingerBandsDto = stockService.getBollingerBands(request.getStockCode(), request.getTimeframe());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("upper_band", bollingerBandsDto.getUpperBand());
+            response.put("middle_band", bollingerBandsDto.getMiddleBand());
+            response.put("lower_band", bollingerBandsDto.getLowerBand());
+
+            grpcResponseHelper.sendJsonResponse("bollinger_bands", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void getMACD(GetMACDRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            MACDDto macdDto = stockService.getMACD(request.getStockCode(), request.getTimeframe());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("macd_line", macdDto.getMacdLine());
+            response.put("signal_line", macdDto.getSignalLine());
+            response.put("histogram", macdDto.getHistogram());
+
+            grpcResponseHelper.sendJsonResponse("macd", response, responseObserver);
+        } catch (Exception e) {
+            grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
+        }
+    }
+
+    @Override
+    public void getRSI(GetRSIRequest request, StreamObserver<Response> responseObserver) {
+        try {
+            RSIDto rsiDto = stockService.getRSI(request.getStockCode(), request.getTimeframe());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("rsi", rsiDto.getRsi());
+
+            grpcResponseHelper.sendJsonResponse("rsi", response, responseObserver);
         } catch (Exception e) {
             grpcResponseHelper.sendErrorResponse(e.getMessage(), responseObserver);
         }

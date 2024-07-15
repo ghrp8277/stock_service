@@ -1,26 +1,27 @@
 package com.example.stockservice.entity.TechnicalIndicators;
 
-import lombok.Data;
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 @Embeddable
 @Data
 public class MovingAverage implements TechnicalIndicator {
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "sma_12", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> sma12;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "sma_20", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> sma20;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "sma_26", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> sma26;
@@ -33,15 +34,24 @@ public class MovingAverage implements TechnicalIndicator {
     }
 
     private List<Double> calculateSMA(List<Double> prices, int period) {
-        List<Double> sma = new ArrayList<>();
-        for (int i = 0; i <= prices.size() - period; i++) {
-            double sum = 0;
-            for (int j = i; j < i + period; j++) {
-                sum += prices.get(j);
-            }
-            sma.add(sum / period);
+        double[] sma = new double[prices.size()];
+        List<Double> result = new ArrayList<>(prices.size());
+
+        if (prices.size() < period) {
+            return result;
         }
-        return sma;
+
+        double sum = prices.stream().limit(period).mapToDouble(Double::doubleValue).sum();
+        sma[period - 1] = sum / period;
+        result.add(sma[period - 1]);
+
+        for (int i = period; i < prices.size(); i++) {
+            sum += prices.get(i) - prices.get(i - period);
+            sma[i] = sum / period;
+            result.add(sma[i]);
+        }
+
+        return result;
     }
 
     @Override

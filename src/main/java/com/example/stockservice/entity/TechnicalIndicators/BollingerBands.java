@@ -1,27 +1,27 @@
 package com.example.stockservice.entity.TechnicalIndicators;
 
-import lombok.Data;
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 @Embeddable
 @Data
 public class BollingerBands implements TechnicalIndicator {
-
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "bollinger_bands_upper", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> upperBand;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "bollinger_bands_middle", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> middleBand;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "bollinger_bands_lower", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> lowerBand;
@@ -35,15 +35,17 @@ public class BollingerBands implements TechnicalIndicator {
     }
 
     private void calculateBollingerBands(List<Double> prices, List<Double> sma20) {
-        upperBand = new ArrayList<>();
-        middleBand = sma20;
-        lowerBand = new ArrayList<>();
+        upperBand = new ArrayList<>(sma20.size());
+        lowerBand = new ArrayList<>(sma20.size());
 
         for (int i = 0; i < sma20.size(); i++) {
-            double stddev = calculateStandardDeviation(prices.subList(i, i + 20));
+            int startIndex = Math.max(i - 19, 0);
+            double stddev = calculateStandardDeviation(prices.subList(startIndex, i + 1));
             upperBand.add(sma20.get(i) + 2 * stddev);
             lowerBand.add(sma20.get(i) - 2 * stddev);
         }
+
+        middleBand = sma20;
     }
 
     private double calculateStandardDeviation(List<Double> values) {

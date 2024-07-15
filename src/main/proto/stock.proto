@@ -13,6 +13,10 @@ service StockService {
     rpc GetStockDataByMarketAndCode (GetStockDataByMarketAndCodeRequest) returns (Response);
     rpc SearchStocksByName (SearchStocksByNameRequest) returns (Response);
     rpc SearchStocksByCode (SearchStocksByCodeRequest) returns (Response);
+    rpc GetMovingAverages (GetMovingAveragesRequest) returns (Response);
+    rpc GetBollingerBands (GetBollingerBandsRequest) returns (Response);
+    rpc GetMACD (GetMACDRequest) returns (Response);
+    rpc GetRSI (GetRSIRequest) returns (Response);
 }
 
 message Empty {}
@@ -46,6 +50,26 @@ message SearchStocksByCodeRequest {
     int32 page = 2;
     int32 size = 3;
     repeated string sort = 4;
+}
+
+message GetMovingAveragesRequest {
+    string stockCode = 1;
+    string timeframe = 2;
+}
+
+message GetBollingerBandsRequest {
+    string stockCode = 1;
+    string timeframe = 2;
+}
+
+message GetMACDRequest {
+    string stockCode = 1;
+    string timeframe = 2;
+}
+
+message GetRSIRequest {
+    string stockCode = 1;
+    string timeframe = 2;
 }
 
 message Response {

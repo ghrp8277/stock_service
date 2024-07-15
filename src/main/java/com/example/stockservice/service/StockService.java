@@ -1,14 +1,20 @@
 package com.example.stockservice.service;
 
-import com.example.stockservice.dto.StockDto;
+import com.example.stockservice.dto.*;
 import com.example.stockservice.entity.Market;
 import com.example.stockservice.entity.Stock;
 import com.example.stockservice.entity.StockData;
+import com.example.stockservice.entity.TechnicalIndicators.BollingerBands;
+import com.example.stockservice.entity.TechnicalIndicators.MACD;
+import com.example.stockservice.entity.TechnicalIndicators.MovingAverage;
+import com.example.stockservice.entity.TechnicalIndicators.RSI;
 import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;
 import com.example.stockservice.repository.StockRepository;
 import com.example.stockservice.util.DateUtil;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,7 +51,7 @@ public class StockService {
             return new ArrayList<>();
         }
     }
-
+    @Cacheable("stockData")
     public List<StockDto> getStockDataByMarketAndCode(String marketName, String code, String timeframe) {
         Optional<Stock> optionalStock = stockRepository.findByCodeAndMarketName(code, marketName);
 
@@ -118,5 +124,117 @@ public class StockService {
 
         Pageable pagingSort = PageRequest.of(page, size, Sort.by(orders));
         return stockRepository.findAllByCodeContaining(code, pagingSort);
+    }
+
+    @Cacheable("movingAverages")
+    public MovingAverageDto getMovingAverages(String stockCode, String timeframe) {
+        Optional<Stock> optionalStock = stockRepository.findByCode(stockCode);
+        if (optionalStock.isPresent()) {
+            Stock stock = optionalStock.get();
+            String startDate = DateUtil.calculateStartDate(timeframe);
+            List<StockData> stockDataList = stockDataRepository.findByStockAndDateAfterWithMovingAverages(stock, startDate);
+
+            List<Double> sma12 = stockDataList.stream()
+                .flatMap(stockData -> stockData.getMovingAverage12().stream())
+                .collect(Collectors.toList());
+
+            List<Double> sma20 = stockDataList.stream()
+                .flatMap(stockData -> stockData.getMovingAverage20().stream())
+                .collect(Collectors.toList());
+
+            List<Double> sma26 = stockDataList.stream()
+                .flatMap(stockData -> stockData.getMovingAverage26().stream())
+                .collect(Collectors.toList());
+
+            return new MovingAverageDto(sma12, sma20, sma26);
+        } else {
+            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+        }
+    }
+
+    @Cacheable("bollingerBands")
+    public BollingerBandsDto getBollingerBands(String stockCode, String timeframe) {
+        Optional<Stock> optionalStock = stockRepository.findByCode(stockCode);
+        if (optionalStock.isPresent()) {
+            Stock stock = optionalStock.get();
+            String startDate = DateUtil.calculateStartDate(timeframe);
+            List<StockData> stockDataList = stockDataRepository.findByStockAndDateAfter(stock, startDate);
+
+            for (StockData stockData : stockDataList) {
+                Hibernate.initialize(stockData.getBollingerBands().getUpperBand());
+                Hibernate.initialize(stockData.getBollingerBands().getMiddleBand());
+                Hibernate.initialize(stockData.getBollingerBands().getLowerBand());
+            }
+
+            List<Double> upperBand = stockDataList.stream()
+                .flatMap(stockData -> stockData.getBollingerBands().getUpperBand().stream())
+                .collect(Collectors.toList());
+
+            List<Double> middleBand = stockDataList.stream()
+                .flatMap(stockData -> stockData.getBollingerBands().getMiddleBand().stream())
+                .collect(Collectors.toList());
+
+            List<Double> lowerBand = stockDataList.stream()
+                .flatMap(stockData -> stockData.getBollingerBands().getLowerBand().stream())
+                .collect(Collectors.toList());
+
+            return new BollingerBandsDto(upperBand, middleBand, lowerBand);
+        } else {
+            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+        }
+    }
+
+    @Cacheable("macd")
+    public MACDDto getMACD(String stockCode, String timeframe) {
+        Optional<Stock> optionalStock = stockRepository.findByCode(stockCode);
+        if (optionalStock.isPresent()) {
+            Stock stock = optionalStock.get();
+            String startDate = DateUtil.calculateStartDate(timeframe);
+            List<StockData> stockDataList = stockDataRepository.findByStockAndDateAfter(stock, startDate);
+
+            for (StockData stockData : stockDataList) {
+                Hibernate.initialize(stockData.getMacd().getMacdLine());
+                Hibernate.initialize(stockData.getMacd().getSignalLine());
+                Hibernate.initialize(stockData.getMacd().getHistogram());
+            }
+
+            List<Double> macdLine = stockDataList.stream()
+                .flatMap(stockData -> stockData.getMacd().getMacdLine().stream())
+                .collect(Collectors.toList());
+
+            List<Double> signalLine = stockDataList.stream()
+                .flatMap(stockData -> stockData.getMacd().getSignalLine().stream())
+                .collect(Collectors.toList());
+
+            List<Double> histogram = stockDataList.stream()
+                .flatMap(stockData -> stockData.getMacd().getHistogram().stream())
+                .collect(Collectors.toList());
+
+            return new MACDDto(macdLine, signalLine, histogram);
+        } else {
+            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+        }
+    }
+
+    @Cacheable("rsi")
+    public RSIDto getRSI(String stockCode, String timeframe) {
+        Optional<Stock> optionalStock = stockRepository.findByCode(stockCode);
+        if (optionalStock.isPresent()) {
+            Stock stock = optionalStock.get();
+            String startDate = DateUtil.calculateStartDate(timeframe);
+            List<StockData> stockDataList = stockDataRepository.findByStockAndDateAfter(stock, startDate);
+
+            for (StockData stockData : stockDataList) {
+                Hibernate.initialize(stockData.getRsi());
+            }
+
+            List<Double> rsi = stockDataList.stream()
+                .map(StockData::getRsi)
+                .collect(Collectors.toList());
+
+            return new RSIDto(rsi);
+        } else {
+            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+        }
     }
 }

@@ -1,26 +1,27 @@
 package com.example.stockservice.entity.TechnicalIndicators;
 
-import lombok.Data;
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 @Embeddable
 @Data
 public class MACD implements TechnicalIndicator {
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "macd_line", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> macdLine;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "signal_line", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> signalLine;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "histogram", joinColumns = @JoinColumn(name = "stock_data_id"))
     @Column(name = "value")
     private List<Double> histogram;
@@ -33,19 +34,19 @@ public class MACD implements TechnicalIndicator {
     }
 
     private void calculateMACD(List<Double> ema12, List<Double> ema26) {
-        macdLine = new ArrayList<>();
+        macdLine = new ArrayList<>(ema12.size());
         for (int i = 0; i < ema12.size(); i++) {
             macdLine.add(ema12.get(i) - ema26.get(i));
         }
         signalLine = calculateEMA(macdLine, 9);
-        histogram = new ArrayList<>();
+        histogram = new ArrayList<>(macdLine.size());
         for (int i = 0; i < macdLine.size(); i++) {
             histogram.add(macdLine.get(i) - signalLine.get(i));
         }
     }
 
     private List<Double> calculateEMA(List<Double> prices, int period) {
-        List<Double> ema = new ArrayList<>();
+        List<Double> ema = new ArrayList<>(prices.size());
         double multiplier = 2.0 / (period + 1);
         ema.add(prices.get(0));
         for (int i = 1; i < prices.size(); i++) {
