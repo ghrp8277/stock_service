@@ -55,6 +55,7 @@ message SearchStocksByCodeRequest {
 message GetMovingAveragesRequest {
     string stockCode = 1;
     string timeframe = 2;
+    repeated int32 periods = 3;
 }
 
 message GetBollingerBandsRequest {

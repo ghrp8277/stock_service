@@ -127,24 +127,34 @@ public class StockService {
     }
 
     @Cacheable("movingAverages")
-    public MovingAverageDto getMovingAverages(String stockCode, String timeframe) {
+    public MovingAverageDto getMovingAverages(String stockCode, String timeframe, List<Integer> periods) {
         Optional<Stock> optionalStock = stockRepository.findByCode(stockCode);
         if (optionalStock.isPresent()) {
             Stock stock = optionalStock.get();
             String startDate = DateUtil.calculateStartDate(timeframe);
             List<StockData> stockDataList = stockDataRepository.findByStockAndDateAfterWithMovingAverages(stock, startDate);
 
-            List<Double> sma12 = stockDataList.stream()
-                .flatMap(stockData -> stockData.getMovingAverage12().stream())
-                .collect(Collectors.toList());
+            List<Double> sma12 = null;
+            List<Double> sma20 = null;
+            List<Double> sma26 = null;
 
-            List<Double> sma20 = stockDataList.stream()
-                .flatMap(stockData -> stockData.getMovingAverage20().stream())
-                .collect(Collectors.toList());
+            if (periods.contains(12)) {
+                sma12 = stockDataList.stream()
+                        .flatMap(stockData -> stockData.getMovingAverage12().stream())
+                        .collect(Collectors.toList());
+            }
 
-            List<Double> sma26 = stockDataList.stream()
-                .flatMap(stockData -> stockData.getMovingAverage26().stream())
-                .collect(Collectors.toList());
+            if (periods.contains(20)) {
+                sma20 = stockDataList.stream()
+                        .flatMap(stockData -> stockData.getMovingAverage20().stream())
+                        .collect(Collectors.toList());
+            }
+
+            if (periods.contains(26)) {
+                sma26 = stockDataList.stream()
+                        .flatMap(stockData -> stockData.getMovingAverage26().stream())
+                        .collect(Collectors.toList());
+            }
 
             return new MovingAverageDto(sma12, sma20, sma26);
         } else {

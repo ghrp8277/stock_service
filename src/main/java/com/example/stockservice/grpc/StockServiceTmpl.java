@@ -210,12 +210,22 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
     @Override
     public void getMovingAverages(GetMovingAveragesRequest request, StreamObserver<Response> responseObserver) {
         try {
-            MovingAverageDto movingAverageDto = stockService.getMovingAverages(request.getStockCode(), request.getTimeframe());
+            MovingAverageDto movingAverageDto = stockService.getMovingAverages(
+                    request.getStockCode(),
+                    request.getTimeframe(),
+                    request.getPeriodsList()
+            );
 
             Map<String, Object> response = new HashMap<>();
-            response.put("sma12", movingAverageDto.getSma12());
-            response.put("sma20", movingAverageDto.getSma20());
-            response.put("sma26", movingAverageDto.getSma26());
+            if (request.getPeriodsList().contains(12)) {
+                response.put("sma12", movingAverageDto.getSma12());
+            }
+            if (request.getPeriodsList().contains(20)) {
+                response.put("sma20", movingAverageDto.getSma20());
+            }
+            if (request.getPeriodsList().contains(26)) {
+                response.put("sma26", movingAverageDto.getSma26());
+            }
 
             grpcResponseHelper.sendJsonResponse("moving_averages", response, responseObserver);
         } catch (Exception e) {
