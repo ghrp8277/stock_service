@@ -4,10 +4,7 @@ import com.example.stockservice.dto.*;
 import com.example.stockservice.entity.Market;
 import com.example.stockservice.entity.Stock;
 import com.example.stockservice.entity.StockData;
-import com.example.stockservice.entity.TechnicalIndicators.BollingerBands;
-import com.example.stockservice.entity.TechnicalIndicators.MACD;
-import com.example.stockservice.entity.TechnicalIndicators.MovingAverage;
-import com.example.stockservice.entity.TechnicalIndicators.RSI;
+import com.example.stockservice.exception.StockNotFoundException;
 import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;
 import com.example.stockservice.repository.StockRepository;
@@ -158,7 +155,7 @@ public class StockService {
 
             return new MovingAverageDto(sma12, sma20, sma26);
         } else {
-            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+            throw new StockNotFoundException();
         }
     }
 
@@ -190,7 +187,7 @@ public class StockService {
 
             return new BollingerBandsDto(upperBand, middleBand, lowerBand);
         } else {
-            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+            throw new StockNotFoundException();
         }
     }
 
@@ -222,7 +219,7 @@ public class StockService {
 
             return new MACDDto(macdLine, signalLine, histogram);
         } else {
-            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+            throw new StockNotFoundException();
         }
     }
 
@@ -244,7 +241,7 @@ public class StockService {
 
             return new RSIDto(rsi);
         } else {
-            throw new NoSuchElementException("Stock not found for code: " + stockCode);
+            throw new StockNotFoundException();
         }
     }
 }
