@@ -16,7 +16,7 @@ public class GrpcExceptionHandlingAspect {
     @Autowired
     private GrpcResponseHelper grpcResponseHelper;
 
-    @Around("@annotation(com.example.socialservice.annotation.GrpcExceptionHandler)")
+    @Around("@annotation(com.example.stockservice.annotation.GrpcExceptionHandler)")
     public void handleGrpcExceptions(ProceedingJoinPoint joinPoint) {
         Object[] args = joinPoint.getArgs();
         @SuppressWarnings("unchecked")

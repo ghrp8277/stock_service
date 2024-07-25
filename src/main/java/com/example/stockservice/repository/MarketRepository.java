@@ -1,6 +1,6 @@
 package com.example.stockservice.repository;
 
-import com.example.stockservice.entity.Market;
+import com.example.common.Market;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

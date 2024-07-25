@@ -1,9 +1,9 @@
 package com.example.stockservice.service;
 
 import com.example.stockservice.dto.*;
-import com.example.stockservice.entity.Market;
-import com.example.stockservice.entity.Stock;
-import com.example.stockservice.entity.StockData;
+import com.example.common.Market;
+import com.example.common.Stock;
+import com.example.common.StockData;
 import com.example.stockservice.exception.StockNotFoundException;
 import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;

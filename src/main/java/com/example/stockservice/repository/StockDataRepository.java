@@ -1,7 +1,7 @@
 package com.example.stockservice.repository;
 
-import com.example.stockservice.entity.Stock;
-import com.example.stockservice.entity.StockData;
+import com.example.common.Stock;
+import com.example.common.StockData;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
