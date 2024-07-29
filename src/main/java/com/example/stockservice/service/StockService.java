@@ -4,7 +4,10 @@ import com.example.stockservice.dto.*;
 import com.example.common.Market;
 import com.example.common.Stock;
 import com.example.common.StockData;
-import com.example.stockservice.exception.StockNotFoundException;
+import com.example.common.BollingerBands;
+import com.example.common.MACD;
+import com.example.common.RSI;
+import com.example.stockservice.exception.kafka.SMAException;
 import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;
 import com.example.stockservice.repository.StockRepository;
@@ -21,10 +24,21 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
+import org.springframework.data.redis.core.RedisTemplate;
+import com.example.stockservice.exception.*;
 
 @Service
 public class StockService {
     private static final Logger logger = LoggerFactory.getLogger(StockService.class);
+
+    @Autowired
+    private KafkaProducerService kafkaProducerService;
+
+    @Autowired
+    private TechnicalIndicatorService technicalIndicatorService;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private MarketRepository marketRepository;
@@ -48,6 +62,42 @@ public class StockService {
             return new ArrayList<>();
         }
     }
+
+    @Cacheable("initialData")
+    public InitialStockDto getInitialStockData(String marketName, String code, String timeframe) {
+        List<StockDto> stockData = getStockDataByMarketAndCode(marketName, code, timeframe);
+
+        List<Double> closePrices = stockData.stream()
+                .map(StockDto::getClosePrice)
+                .map(Integer::doubleValue)
+                .collect(Collectors.toList());
+
+        String symbol = marketName + ":" + code;
+
+        try {
+            technicalIndicatorService.calculateAndCacheIndicators(symbol, timeframe, closePrices);
+        } catch (Exception e) {
+            throw e;
+        }
+
+        MovingAverageDto movingAverages = new MovingAverageDto(
+                technicalIndicatorService.getSma12(symbol, timeframe),
+                technicalIndicatorService.getSma20(symbol, timeframe),
+                technicalIndicatorService.getSma26(symbol, timeframe)
+        );
+
+        BollingerBands bb = technicalIndicatorService.getBollingerBands(symbol, timeframe);
+        BollingerBandsDto bollingerBands = new BollingerBandsDto(bb.getUpperBand(), bb.getMiddleBand(), bb.getLowerBand());
+
+        MACD macdValue = technicalIndicatorService.getMacd(symbol, timeframe);
+        MACDDto macd = new MACDDto(macdValue.getMacdLine(), macdValue.getSignalLine(), macdValue.getHistogram());
+
+        RSI rsiValue = technicalIndicatorService.getRsi(symbol, timeframe);
+        RSIDto rsi = new RSIDto(rsiValue.getRsi());
+
+        return new InitialStockDto(stockData, movingAverages, bollingerBands, macd, rsi);
+    }
+
     @Cacheable("stockData")
     public List<StockDto> getStockDataByMarketAndCode(String marketName, String code, String timeframe) {
         Optional<Stock> optionalStock = stockRepository.findByCodeAndMarketName(code, marketName);
