@@ -1,6 +1,7 @@
 package com.example.stockservice.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,22 @@ public class JsonUtil {
     public <T> T parseJson(String json, Class<T> clazz) {
         try {
             return objectMapper.readValue(json, clazz);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Invalid JSON format", e);
+        }
+    }
+
+    public <T> List<T> parseJsonToList(String json, Class<T> clazz) {
+        try {
+            return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, clazz));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Invalid JSON format", e);
+        }
+    }
+
+    public Map<String, Object> parseJsonToMap(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Invalid JSON format", e);
         }
@@ -70,5 +87,9 @@ public class JsonUtil {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Invalid JSON format", e);
         }
+    }
+
+    public <T> T convertValue(Object fromValue, TypeReference<T> toValueType) {
+        return objectMapper.convertValue(fromValue, toValueType);
     }
 }

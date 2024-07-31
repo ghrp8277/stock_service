@@ -74,6 +74,7 @@ public class KafkaConfig {
                         errorDetails.put("message", kafkaException.getMessage());
                         errorDetails.put("code", kafkaException.getStatusCode());
                     } else {
+                        errorDetails.put("cause", cause);
                         errorDetails.put("message", exception.getMessage());
                         errorDetails.put("code", KafkaErrorCodes.UNKNOWN_ERROR_CODE);
                     }

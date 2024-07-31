@@ -1,5 +1,6 @@
 package com.example.stockservice.service;
 
+import com.example.stockservice.constants.TimeframeConstants;
 import com.example.stockservice.dto.*;
 import com.example.common.Market;
 import com.example.common.Stock;
@@ -7,11 +8,11 @@ import com.example.common.StockData;
 import com.example.common.BollingerBands;
 import com.example.common.MACD;
 import com.example.common.RSI;
-import com.example.stockservice.exception.kafka.SMAException;
 import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;
 import com.example.stockservice.repository.StockRepository;
 import com.example.stockservice.util.DateUtil;
+import jakarta.persistence.Tuple;
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -24,7 +25,6 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
-import org.springframework.data.redis.core.RedisTemplate;
 import com.example.stockservice.exception.*;
 
 @Service
@@ -32,13 +32,7 @@ public class StockService {
     private static final Logger logger = LoggerFactory.getLogger(StockService.class);
 
     @Autowired
-    private KafkaProducerService kafkaProducerService;
-
-    @Autowired
     private TechnicalIndicatorService technicalIndicatorService;
-
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private MarketRepository marketRepository;
@@ -48,6 +42,23 @@ public class StockService {
 
     @Autowired
     private StockDataRepository stockDataRepository;
+
+    public StockDto convertToDto(Tuple tuple) {
+        return new StockDto(
+            tuple.get("date", String.class),
+            tuple.get("openPrice", Integer.class),
+            tuple.get("highPrice", Integer.class),
+            tuple.get("lowPrice", Integer.class),
+            tuple.get("closePrice", Integer.class),
+            tuple.get("volume", Integer.class)
+        );
+    }
+
+    public List<StockDto> convertToDtoList(List<Tuple> tuples) {
+        return tuples.stream()
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
+    }
 
     public List<Market> getMarkets() {
         return marketRepository.findAll();
@@ -95,7 +106,75 @@ public class StockService {
         RSI rsiValue = technicalIndicatorService.getRsi(symbol, timeframe);
         RSIDto rsi = new RSIDto(rsiValue.getRsi());
 
-        return new InitialStockDto(stockData, movingAverages, bollingerBands, macd, rsi);
+        return new InitialStockDto(marketName, code, stockData, movingAverages, bollingerBands, macd, rsi);
+    }
+
+    public DailyStockDataDto getDailyStockData(String code) {
+        Stock stock = stockRepository.findByCode(code)
+            .orElseThrow(() -> new RuntimeException("Stock not found with code: " + code));
+        String marketName = stock.getMarket().getName();
+        Pageable pageable = PageRequest.of(0, 30);
+        List<Tuple> stockDataTuples = stockDataRepository.findPast30DaysByMarketAndCode(marketName, code, pageable).getContent();
+        List<StockDto> stockDtoList = this.convertToDtoList(stockDataTuples);
+        return processAndSendDailyData(marketName, code, stockDtoList);
+    }
+
+    public DailyStockDataDto processAndSendDailyData(String marketName, String code, List<StockDto> stockDataList) {
+        String symbol = marketName + ":" + code;
+
+        List<Double> closePrices = stockDataList.stream()
+                .map(StockDto::getClosePrice)
+                .map(Integer::doubleValue)
+                .collect(Collectors.toList());
+
+        try {
+            technicalIndicatorService.calculateAndCacheIndicators(symbol, TimeframeConstants.ONE_DAY, closePrices);
+        } catch (Exception e) {
+            throw e;
+        }
+
+        List<Double> sma12 = technicalIndicatorService.getSma12(symbol, TimeframeConstants.ONE_DAY);
+        List<Double> sma20 = technicalIndicatorService.getSma20(symbol, TimeframeConstants.ONE_DAY);
+        List<Double> sma26 = technicalIndicatorService.getSma26(symbol, TimeframeConstants.ONE_DAY);
+
+        MovingAverageDto movingAverages = new MovingAverageDto(
+                Collections.singletonList(sma12.getFirst()),
+                Collections.singletonList(sma20.getFirst()),
+                Collections.singletonList(sma26.getFirst())
+        );
+
+        BollingerBands bb = technicalIndicatorService.getBollingerBands(symbol, TimeframeConstants.ONE_DAY);
+        BollingerBandsDto bollingerBands = new BollingerBandsDto(
+                Collections.singletonList(bb.getUpperBand().getFirst()),
+                Collections.singletonList(bb.getMiddleBand().getFirst()),
+                Collections.singletonList(bb.getLowerBand().getFirst())
+        );
+
+        MACD macdValue = technicalIndicatorService.getMacd(symbol, TimeframeConstants.ONE_DAY);
+        MACDDto macd = new MACDDto(
+                Collections.singletonList(macdValue.getMacdLine().getFirst()),
+                Collections.singletonList(macdValue.getSignalLine().getFirst()),
+                Collections.singletonList(macdValue.getHistogram().getFirst())
+        );
+
+        RSI rsiValue = technicalIndicatorService.getRsi(symbol, TimeframeConstants.ONE_DAY);
+        RSIDto rsi = new RSIDto(Collections.singletonList(rsiValue.getRsi().getFirst()));
+
+        if (stockDataList.isEmpty()) {
+            throw new RuntimeException("Stock data list is empty");
+        }
+
+        StockDto latestStockData = stockDataList.getFirst();
+
+        return new DailyStockDataDto(
+                marketName,
+                code,
+                Collections.singletonList(latestStockData),
+                movingAverages,
+                bollingerBands,
+                macd,
+                rsi
+        );
     }
 
     @Cacheable("stockData")

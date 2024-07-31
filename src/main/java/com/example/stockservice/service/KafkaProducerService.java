@@ -13,4 +13,8 @@ public class KafkaProducerService {
     public void sendInitialStockDataMessage(String message) {
         kafkaTemplate.send(KafkaConstants.INITIAL_DATA_TOPIC, message);
     }
+
+    public void sendDailyStockDataMessage(String message) {
+        kafkaTemplate.send(KafkaConstants.DAILY_DATA_TOPIC, message);
+    }
 }

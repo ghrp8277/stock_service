@@ -9,7 +9,6 @@ import com.example.stockservice.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.List;
 
@@ -27,7 +26,6 @@ public class TechnicalIndicatorService {
         BollingerBands bb = new BollingerBands();
         MACD macd = new MACD();
         RSI rsi = new RSI();
-
         ma.calculate(prices);
         bb.calculate(prices);
         macd.calculate(prices);
