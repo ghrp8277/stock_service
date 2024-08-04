@@ -47,7 +47,6 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
     @GrpcExceptionHandler
     public void getStocksByMarket(GetStocksByMarketRequest request, StreamObserver<Response> responseObserver) {
         List<Stock> stocks = stockService.getStocksByMarket(request.getMarketName());
-
         List<Map<String, Object>> responseData = stocks.stream()
                 .map(stock -> {
                     Map<String, Object> map = new HashMap<>();

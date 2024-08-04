@@ -3,13 +3,13 @@ package com.example.stockservice.service;
 import com.example.stockservice.constants.KafkaConstants;
 import com.example.stockservice.dto.DailyStockDataDto;
 import com.example.stockservice.dto.InitialStockDto;
-import com.example.stockservice.dto.StockDto;
 import com.example.stockservice.util.JsonUtil;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import com.example.common.Stock;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,5 +41,21 @@ public class KafkaConsumerService {
         DailyStockDataDto dailyStockDataDto = stockService.getDailyStockData(symbol);
         String jsonMessage = jsonUtil.toJson(dailyStockDataDto);
         kafkaProducerService.sendDailyStockDataMessage(jsonMessage);
+    }
+
+    @KafkaListener(topics = KafkaConstants.SOCIAL_STOCK_REQUEST_TOPIC, groupId = KafkaConstants.SOCIAL_STOCK_GROUP_ID)
+    public void consumeSocialStockRequest(String message) {
+        String market = jsonUtil.getValueByKey(message, "market");
+        List<Stock> stocks = stockService.getStocksByMarket(market);
+        List<Map<String, Object>> responseData = stocks.stream()
+        .map(stock -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("code", stock.getCode());
+            map.put("name", stock.getName());
+            return map;
+        })
+        .toList();
+        String jsonMessage = jsonUtil.toJson(responseData);
+        kafkaProducerService.sendStockMessage(jsonMessage);
     }
 }
