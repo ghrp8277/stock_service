@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-slave-init-script
+  namespace: prod
+data:
+  init-slave.sh: |
+    #!/bin/bash
+
+    DATABASE_HOST=localhost
+    DATABASE_PORT=3306
+
+    # 데이터베이스가 준비될 때까지 대기
+    until mysqladmin ping -h "$DATABASE_HOST" --silent; do
+      echo "Waiting for database connection..."
+      # 대기 시간 추가 (예: 5초)
+      sleep 5
+    done
+
+    echo "Mysql is up and running"
+
+    # 슬레이브 설정
+    mysql -u root -p"$MYSQL_ROOT_PASSWORD" <<EOF
+    CHANGE MASTER TO
+        MASTER_HOST='$MYSQL_MASTER_HOST',
+        MASTER_USER='$MYSQL_MASTER_USER',
+        MASTER_PASSWORD='$MYSQL_MASTER_PASSWORD',
+        MASTER_LOG_FILE='mysql-bin.000001',
+        MASTER_LOG_POS=154;
+    START SLAVE;
+    EOF
+
+    echo "Slave setup completed"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-slave-config
+  namespace: prod
+data:
+  my.cnf: |
+    [client]
+    default-character-set = utf8mb4
+
+    [mysql]
+    default-character-set = utf8mb4
+
+    [mysqld]
+    character-set-client-handshake = FALSE
+    character-set-server = utf8mb4
+    collation-server = utf8mb4_unicode_ci
+    server-id = 2 
+    log_bin = mysql-bin
+    relay_log = mysql-relay-bin
+    read_only = 1
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stock-fluent-bit-config
+  namespace: prod
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Daemon Off
+        Log_Level debug
+        Parsers_File parsers.conf
+
+    [INPUT]
+        Name tail
+        Path /app/logs/myapp-*.log
+        Read_from_Head false
+
+    [OUTPUT]
+        name slack
+        match *
+        webhook https://hooks.slack.com/services/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

@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stock-deployment
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stock
+  template:
+    metadata:
+      labels:
+        app: stock
+    spec:
+      containers:
+        - name: spring-stock-container
+          image: 192.168.0.212:5555/spring-stock:20240807-204308
+          ports:
+            - name: grpc
+              containerPort: 3094
+          volumeMounts:
+            - name: stock-logs
+              mountPath: /usr/src/main/logs
+          env:
+            - name: DATABASE_HOST
+              value: "stock-mysql-slave-service"
+            - name: DATABASE_PORT
+              value: "3306"
+            - name: DATABASE_USER
+              value: root
+            - name: DATABASE_PASSWORD
+              value: testtest
+
+        - name: mysql-slave-container
+          image: 192.168.0.212:5555/mysql:latest
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: testtest
+            - name: MYSQL_DATABASE
+              value: main
+            - name: MYSQL_ALLOW_EMPTY_PASSWORD
+              value: "no"
+            - name: MYSQL_ROOT_HOST
+              value: "%"
+            - name: MYSQL_REPLICATION_MODE
+              value: slave
+            - name: MYSQL_MASTER_HOST
+              value: "batch-mysql-master-service"
+            - name: MYSQL_MASTER_PORT
+              value: "3306"
+            - name: MYSQL_MASTER_USER
+              value: root
+            - name: MYSQL_MASTER_PASSWORD
+              value: testtest
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: stock-mysql-slave-data
+              mountPath: /var/lib/mysql
+            - name: mysql-config-volume
+              mountPath: /etc/mysql/my.cnf
+              subPath: my.cnf
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d/init-slave.sh
+              subPath: init-slave.sh
+
+        - name: phpmyadmin-container
+          image: 192.168.0.212:5555/phpmyadmin/phpmyadmin
+          ports:
+            - containerPort: 80
+          env:
+            - name: PMA_HOST
+              value: "stock-mysql-slave-service"
+            - name: PMA_PORT
+              value: "3306"
+            - name: PMA_USER
+              value: root
+            - name: PMA_PASSWORD
+              value: testtest
+
+        - name: redis-container
+          image: 192.168.0.212:5555/redis:latest
+          ports:
+            - containerPort: {{ .Values.redis.master.env.port }}
+          volumeMounts:
+            - name: stock-redis-data
+              mountPath: {{ .Values.redis.master.volume.mountPath }}
+
+        - name: redis-gui-container
+          image: 192.168.0.212:5555/rediscommander/redis-commander:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: REDIS_HOSTS
+              value: "stock-redis-service"
+            - name: USER
+              value: {{ .Values.redis.master.env.user }}
+            - name: PASSWORD
+              value: {{ .Values.redis.master.env.password }}
+
+        - name: fluent-bit
+          image: 192.168.0.212:5555/fluent/fluent-bit
+          volumeMounts:
+            - name: stock-fluent-config
+              mountPath: /fluent-bit/etc/fluent-bit.conf
+              subPath: fluent-bit.conf
+            - name: stock-logs
+              mountPath: /usr/src/main/logs
+
+      volumes:
+        - name: stock-logs
+          persistentVolumeClaim:
+            claimName: stock-logs-pvc
+        - name: stock-mysql-slave-data
+          persistentVolumeClaim:
+            claimName: stock-mysql-slave-data-pvc
+        - name: stock-redis-data
+          persistentVolumeClaim:
+            claimName: stock-redis-data-pvc
+        - name: stock-fluent-config
+          configMap:
+            name: stock-fluent-bit-config
+        - name: mysql-config-volume
+          configMap:
+            name: mysql-slave-config
+        - name: init-script
+          configMap:
+            name: mysql-slave-init-script
