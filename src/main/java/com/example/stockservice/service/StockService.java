@@ -75,7 +75,7 @@ public class StockService {
     }
 
     @Cacheable("initialData")
-    public InitialStockDto getInitialStockData(String marketName, String code, String timeframe) {
+    public InitialStockDto getInitialStockData(String uuid, String marketName, String code, String timeframe) {
         List<StockDto> stockData = getStockDataByMarketAndCode(marketName, code, timeframe);
 
         List<Double> closePrices = stockData.stream()
@@ -106,7 +106,7 @@ public class StockService {
         RSI rsiValue = technicalIndicatorService.getRsi(symbol, timeframe);
         RSIDto rsi = new RSIDto(rsiValue.getRsi());
 
-        return new InitialStockDto(marketName, code, stockData, movingAverages, bollingerBands, macd, rsi);
+        return new InitialStockDto(uuid, marketName, code, stockData, movingAverages, bollingerBands, macd, rsi);
     }
 
     public DailyStockDataDto getDailyStockData(String code) {

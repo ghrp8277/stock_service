@@ -34,7 +34,7 @@ public class StockServiceInitTest {
 
     @Test
     public void testProcessAndSendDailyData() {
-        InitialStockDto result = stockService.getInitialStockData("KOSPI", "005930", "1month");
+        InitialStockDto result = stockService.getInitialStockData("test", "KOSPI", "005930", "1month");
 //        InitialStockDto result = stockService.getInitialStockData("KOSPI", "005930", "1year");
 //        InitialStockDto result = stockService.getInitialStockData("KOSPI", "005930", "3years");
 

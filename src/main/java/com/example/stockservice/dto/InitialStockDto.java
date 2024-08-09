@@ -11,6 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 public class InitialStockDto implements Serializable {
     private static final long serialVersionUID = 1L;
+    private String uuid;
     private String marketName;
     private String code;
     private List<StockDto> stockData;

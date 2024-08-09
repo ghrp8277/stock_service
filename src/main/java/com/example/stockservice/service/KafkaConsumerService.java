@@ -29,7 +29,8 @@ public class KafkaConsumerService {
         String timeframe = jsonUtil.getValueByKey(message, "timeframe");
         String marketName = jsonUtil.getValueByKey(message, "marketName");
         String code = jsonUtil.getValueByKey(message, "code");
-        InitialStockDto initialStockDto = stockService.getInitialStockData(marketName, code, timeframe);
+        String uuid = jsonUtil.getValueByKey(message, "uuid");
+        InitialStockDto initialStockDto = stockService.getInitialStockData(uuid, marketName, code, timeframe);
         String jsonMessage = jsonUtil.toJson(initialStockDto);
         kafkaProducerService.sendInitialStockDataMessage(jsonMessage);
     }
