@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: spring-stock-container
-          image: 192.168.0.212:5555/spring-stock:20240809-215019
+          image: 192.168.0.212:5555/spring-stock:20240809-223324
           ports:
             - name: grpc
               containerPort: 3094
