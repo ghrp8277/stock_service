@@ -26,6 +26,15 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
     private GrpcResponseHelper grpcResponseHelper;
 
     @Override
+    public void check(HealthCheckRequest request, StreamObserver<HealthCheckResponse> responseObserver) {
+        HealthCheckResponse response = HealthCheckResponse.newBuilder()
+                .setStatus(HealthCheckResponse.ServingStatus.SERVING)
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
     @GrpcExceptionHandler
     public void getMarkets(Empty request, StreamObserver<Response> responseObserver) {
         List<Market> markets = stockService.getMarkets();
