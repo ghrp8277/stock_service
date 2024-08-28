@@ -5,6 +5,7 @@ import com.example.stockservice.annotation.GrpcExceptionHandler;
 import com.example.stockservice.dto.*;
 import com.example.common.Market;
 import com.example.common.Stock;
+import com.example.common.Favorite;
 import com.example.stockservice.service.StockService;
 import com.example.stockservice.util.GrpcResponseHelper;
 import io.grpc.stub.StreamObserver;
@@ -19,6 +20,8 @@ import java.util.stream.Collectors;
 
 @GrpcService
 public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
+    private final String DEFAULT_RESULTS = "results";
+
     @Autowired
     private StockService stockService;
 
@@ -49,7 +52,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
 
         Map<String, Object> response = new HashMap<>();
         response.put("markets", responseData);
-        grpcResponseHelper.sendJsonResponse("markets", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -68,7 +71,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         Map<String, Object> response = new HashMap<>();
         response.put("market_name", request.getMarketName());
         response.put("stocks", responseData);
-        grpcResponseHelper.sendJsonResponse("stocks", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -95,7 +98,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         response.put("market_name", request.getMarketName());
         response.put("stock_code", request.getCode());
         response.put("stocks", responseData);
-        grpcResponseHelper.sendJsonResponse("stocks", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -123,7 +126,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         response.put("stocks", responseData);
         response.put("total_pages", stocksPage.getTotalPages());
         response.put("total_elements", stocksPage.getTotalElements());
-        grpcResponseHelper.sendJsonResponse("all_stocks_by_market", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -150,7 +153,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         response.put("stocks", responseData);
         response.put("total_pages", stocksPage.getTotalPages());
         response.put("total_elements", stocksPage.getTotalElements());
-        grpcResponseHelper.sendJsonResponse("stocks_by_name", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -180,7 +183,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         response.put("stocks", responseData);
         response.put("total_pages", stocksPage.getTotalPages());
         response.put("total_elements", stocksPage.getTotalElements());
-        grpcResponseHelper.sendJsonResponse("stocks_by_code", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -202,7 +205,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         if (request.getPeriodsList().contains(26)) {
             response.put("sma26", movingAverageDto.getSma26());
         }
-        grpcResponseHelper.sendJsonResponse("moving_averages", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -213,7 +216,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         response.put("upper_band", bollingerBandsDto.getUpperBand());
         response.put("middle_band", bollingerBandsDto.getMiddleBand());
         response.put("lower_band", bollingerBandsDto.getLowerBand());
-        grpcResponseHelper.sendJsonResponse("bollinger_bands", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -224,7 +227,7 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         response.put("macd_line", macdDto.getMacdLine());
         response.put("signal_line", macdDto.getSignalLine());
         response.put("histogram", macdDto.getHistogram());
-        grpcResponseHelper.sendJsonResponse("macd", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 
     @Override
@@ -233,6 +236,50 @@ public class StockServiceTmpl extends StockServiceGrpc.StockServiceImplBase {
         RSIDto rsiDto = stockService.getRSI(request.getStockCode(), request.getTimeframe());
         Map<String, Object> response = new HashMap<>();
         response.put("rsi", rsiDto.getRsi());
-        grpcResponseHelper.sendJsonResponse("rsi", response, responseObserver);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
+    }
+
+    @Override
+    @GrpcExceptionHandler
+    public void getFavoritesByUser(GetFavoritesByUserRequest request, StreamObserver<Response> responseObserver) {
+        Page<Favorite> favorites = stockService.getFavoritesByUserId(
+                request.getUserId(),
+                request.getPage(),
+                request.getPageSize()
+        );
+        List<Map<String, String>> favoriteList = favorites.stream()
+                .map(fav -> {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("code", fav.getStock().getCode());
+                    map.put("name", fav.getStock().getName());
+                    map.put("market", fav.getStock().getMarket().getName());
+                    return map;
+                })
+                .collect(Collectors.toList());
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("favorites", favoriteList);
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, responseMap, responseObserver);
+    }
+
+    @Override
+    @GrpcExceptionHandler
+    public void addFavorite(AddFavoriteRequest request, StreamObserver<Response> responseObserver) {
+        Favorite favorite = stockService.addFavorite(request.getUserId(), request.getStockCode());
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", favorite.getStock().getCode());
+        response.put("name", favorite.getStock().getName());
+        response.put("market", favorite.getStock().getMarket().getName());
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
+    }
+
+    @Override
+    @GrpcExceptionHandler
+    public void removeFavorite(RemoveFavoriteRequest request, StreamObserver<Response> responseObserver) {
+        Favorite favorite = stockService.removeFavorite(request.getUserId(), request.getStockCode());
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", favorite.getStock().getCode());
+        response.put("name", favorite.getStock().getName());
+        response.put("market", favorite.getStock().getMarket().getName());
+        grpcResponseHelper.sendJsonResponse(DEFAULT_RESULTS, response, responseObserver);
     }
 }

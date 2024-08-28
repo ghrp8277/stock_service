@@ -18,6 +18,9 @@ service StockService {
     rpc GetBollingerBands (GetBollingerBandsRequest) returns (Response);
     rpc GetMACD (GetMACDRequest) returns (Response);
     rpc GetRSI (GetRSIRequest) returns (Response);
+    rpc GetFavoritesByUser (GetFavoritesByUserRequest) returns (Response);
+    rpc AddFavorite (AddFavoriteRequest) returns (Response);
+    rpc RemoveFavorite (RemoveFavoriteRequest) returns (Response);
 }
 
 message Empty {}
@@ -86,6 +89,22 @@ message GetMACDRequest {
 message GetRSIRequest {
     string stockCode = 1;
     string timeframe = 2;
+}
+
+message GetFavoritesByUserRequest {
+    int64 userId = 1;
+    uint32 page = 2;
+    uint32 pageSize = 3;
+}
+
+message AddFavoriteRequest {
+    int64 userId = 1;
+    string stockCode = 2;
+}
+
+message RemoveFavoriteRequest {
+    int64 userId = 1;
+    string stockCode = 2;
 }
 
 message Response {

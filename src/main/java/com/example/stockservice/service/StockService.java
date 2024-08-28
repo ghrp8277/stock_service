@@ -8,6 +8,8 @@ import com.example.common.StockData;
 import com.example.common.BollingerBands;
 import com.example.common.MACD;
 import com.example.common.RSI;
+import com.example.common.Favorite;
+import com.example.stockservice.repository.FavoriteRepository;
 import com.example.stockservice.repository.MarketRepository;
 import com.example.stockservice.repository.StockDataRepository;
 import com.example.stockservice.repository.StockRepository;
@@ -42,6 +44,9 @@ public class StockService {
 
     @Autowired
     private StockDataRepository stockDataRepository;
+
+    @Autowired
+    private FavoriteRepository favoriteRepository;
 
     public StockDto convertToDto(Tuple tuple) {
         return new StockDto(
@@ -372,5 +377,32 @@ public class StockService {
         } else {
             throw new StockNotFoundException();
         }
+    }
+
+    public Page<Favorite> getFavoritesByUserId(Long userId, int page, int pageSize) {
+        Pageable pageable = PageRequest.of(page, pageSize);
+        return favoriteRepository.findByUserId(userId, pageable);
+    }
+
+    public Favorite addFavorite(Long userId, String stockCode) {
+        Stock stock = stockRepository.findByCode(stockCode)
+                .orElseThrow(() -> new RuntimeException("Stock not found with code: " + stockCode));
+
+        Favorite favorite = new Favorite();
+        favorite.setUserId(userId);
+        favorite.setStock(stock);
+        return favoriteRepository.save(favorite);
+    }
+
+    public Favorite removeFavorite(Long userId, String stockCode) {
+        Stock stock = stockRepository.findByCode(stockCode)
+                .orElseThrow(() -> new RuntimeException("Stock not found with code: " + stockCode));
+
+        Favorite favorite = favoriteRepository.findByUserIdAndStock(userId, stock)
+                .orElseThrow(() -> new RuntimeException("Favorite not found for user: " + userId + " and stock: " + stockCode));
+
+        favoriteRepository.delete(favorite);
+
+        return favorite;
     }
 }
